@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WhatsApp WebRTC Bridge</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        #status { font-weight: bold; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <h1>WhatsApp Call Client</h1>
+    <p>Status: <span id="status">Connecting to server...</span></p>
+
+    <div id="incoming-call" class="hidden">
+        <p>Llamada entrante de <b id="caller-name"></b> (<span id="caller-number"></span>)</p>
+        <button id="accept-btn">Aceptar</button>
+        <button id="reject-btn">Rechazar</button>
+    </div>
+
+    <div id="active-call" class="hidden">
+        <p>Llamada activa. Duración: <span id="timer">00:00</span></p>
+        <button id="terminate-btn">Colgar</button>
+    </div>
+
+    <!-- El audio del otro participante se adjuntará aquí -->
+    <audio id="remote-audio" autoplay></audio>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="client.js"></script>
+</body>
+</html>
