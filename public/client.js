@@ -43,77 +43,64 @@ terminateBtn.addEventListener('click', () => {
 });
 
 async function acceptCall() {
-    console.log('Accepting call...');
+    console.log('Accepting call...', currentCallId);
     incomingCallEl.classList.add('hidden');
 
     try {
-        // 1. Pedir permiso para el micrófono
+        // ... (código existente para getUserMedia y crear PeerConnection) ...
         localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        statusEl.textContent = 'Microphone access granted. Connecting...';
-
-        // 2. Crear PeerConnection
         pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-
-        // 3. Añadir el stream local (micrófono) al PeerConnection
         localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-
-        // 4. Manejar el stream remoto (audio de WhatsApp)
+        
         pc.ontrack = (event) => {
-            console.log('Remote track received');
             remoteAudio.srcObject = event.streams[0];
         };
 
-        // 5. Enviar candidatos ICE al servidor
         pc.onicecandidate = (event) => {
             if (event.candidate) {
-                socket.emit('browser-candidate', event.candidate);
+                // MODIFICACIÓN: Enviar el callId junto con el candidato
+                socket.emit('browser-candidate', { callId: currentCallId, candidate: event.candidate });
             }
         };
 
-        // 6. Crear la oferta SDP y enviarla al servidor
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
-        socket.emit('browser-offer', offer);
-        console.log('Browser SDP offer sent');
+
+        // MODIFICACIÓN CLAVE: Enviar el callId junto con la oferta SDP
+        socket.emit('browser-offer', { callId: currentCallId, sdp: offer.sdp });
+        console.log('Browser SDP offer sent for call:', currentCallId);
 
     } catch (err) {
         console.error('Error accepting call:', err);
-        statusEl.textContent = 'Error: Could not start call.';
         resetUI();
     }
 }
 
-// --- Recibir la respuesta del servidor ---
-socket.on('browser-answer', async (sdp) => {
+// MODIFICACIÓN: Actualizar los manejadores de eventos para usar el callId
+socket.on('browser-answer', async ({ callId, sdp }) => {
+    if (callId !== currentCallId) return; // Ignorar si no es para la llamada actual
     console.log('Received SDP answer from server');
-    try {
-        await pc.setRemoteDescription({ type: 'answer', sdp });
-        console.log('Remote description (answer) set.');
-    } catch (err) {
-        console.error('Error setting remote description:', err);
-    }
+    await pc.setRemoteDescription({ type: 'answer', sdp });
 });
 
-// Recibir candidatos ICE del servidor
-socket.on('browser-candidate', async (candidate) => {
-    try {
-        await pc.addIceCandidate(candidate);
-    } catch (err) {
-        console.error('Error adding ICE candidate:', err);
-    }
+socket.on('browser-candidate', async ({ callId, candidate }) => {
+    if (callId !== currentCallId) return;
+    await pc.addIceCandidate(candidate);
 });
 
-// --- Manejo del estado de la llamada ---
-socket.on('start-browser-timer', () => {
+socket.on('start-browser-timer', ({ callId }) => {
+    if (callId !== currentCallId) return;
     statusEl.textContent = 'Call in progress.';
     activeCallEl.classList.remove('hidden');
     startTimer();
 });
 
-socket.on('call-ended', () => {
+socket.on('call-ended', ({ callId }) => {
+    if (callId !== currentCallId) return;
     statusEl.textContent = 'Call ended.';
     resetUI();
 });
+
 
 // --- Funciones de Utilidad ---
 function startTimer() {
