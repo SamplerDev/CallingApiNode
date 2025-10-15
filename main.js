@@ -92,6 +92,7 @@ app.get("/call-events", (req, res) => {
  */
 app.post("/call-events", async (req, res) => {
     try {
+        console.log(req.body)
         const call = req.body?.entry?.[0]?.changes?.[0]?.value?.calls?.[0];
         if (!call || !call.id || !call.event) {
             return res.sendStatus(200); // Evento no válido o no es de llamada
